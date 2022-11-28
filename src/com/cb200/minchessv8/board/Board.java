@@ -1,12 +1,12 @@
-package cb200.minchessv8.board;
+package com.cb200.minchessv8.board;
 
 import java.util.Arrays;
 
-import cb200.minchessv8.Util.B;
-import cb200.minchessv8.gen.Gen;
-import cb200.minchessv8.gen.Magic;
-import cb200.minchessv8.piece.Piece.LongType;
-import cb200.minchessv8.zobrist.Zobrist;
+import com.cb200.minchessv8.Util.B;
+import com.cb200.minchessv8.gen.Gen;
+import com.cb200.minchessv8.gen.Magic;
+import com.cb200.minchessv8.piece.Piece.LongType;
+import com.cb200.minchessv8.zobrist.Zobrist;
 
 public class Board {
 
@@ -309,7 +309,8 @@ public class Board {
         long key = board.key;
         int player = board.player;
         int playerBit = player << 3;
-        int otherBit = 8 ^ playerBit;
+        int other = 1 ^ player;
+        int otherBit = other << 3;
         int startSquare = move & 0x3f;
         long startSquareBit = 1L << startSquare;
         int startFile = startSquare & 7;
@@ -331,15 +332,15 @@ public class Board {
             halfMoveCount = 0;
             bitboards[targetPiece] &= ~targetSquareBit;
             bitboards[otherBit] &= ~targetSquareBit;
-            key ^= Zobrist.PIECE[targetPieceType][1 ^ player][targetSquare];
+            key ^= Zobrist.PIECE[targetPieceType][other][targetSquare];
             if(targetPieceType == 3) {
                 if(targetSquare == (player == 0 ? 63 : 7) && (castling & (player == 0 ? 4 : 1)) != 0) {
                     castling ^= (player == 0 ? 4 : 1);
-                    key ^= Zobrist.KING_SIDE[1 ^ player];
+                    key ^= Zobrist.KING_SIDE[other];
                 } else {
                     if(targetSquare == (player == 0 ? 56 : 0) && (castling & (player == 0 ? 8 : 2)) != 0) {
                         castling ^= (player == 0 ? 8 : 2);
-                        key ^= Zobrist.QUEEN_SIDE[1 ^ player];
+                        key ^= Zobrist.QUEEN_SIDE[other];
                     }
                 }
             }
@@ -348,15 +349,14 @@ public class Board {
             halfMoveCount = 0;
             int eCaptureSquare = (eSquare + (player == 0 ? -8 : 8));
             long eCaptureBit = 1L << eCaptureSquare;
-            bitboards[6 | (8 ^ playerBit)] &= ~eCaptureBit;
+            bitboards[6 | otherBit] &= ~eCaptureBit;
             bitboards[otherBit] &= ~eCaptureBit;
-            key ^= Zobrist.PIECE[6][1 ^ player][eCaptureSquare];
+            key ^= Zobrist.PIECE[6][other][eCaptureSquare];
         }
         if(eSquare != -1) {
             key ^= Zobrist.ENPASSANT_FILE[eSquare & 7];
             eSquare = -1;
         }
-        
         bitboards[playerBit] |= targetSquareBit;
         if(promotePiece == 0) {
             bitboards[startPiece] |= targetSquareBit;
@@ -371,13 +371,13 @@ public class Board {
                 if(Math.abs(startSquare - targetSquare) == 2) {
                     int rookRank = player * 56;
                     if(targetFile == 6) {
-                        bitboards[3 + playerBit] = bitboards[3 + playerBit] & ~(1L << (rookRank + 7)) | (1L << (rookRank + 5));
-                        bitboards[playerBit] = bitboards[playerBit] & ~(1L << (rookRank + 7)) | (1L << (rookRank + 5));
-                        key ^= Zobrist.PIECE[3][player][rookRank + 7] ^ Zobrist.PIECE[3][player][rookRank + 5];
+                        bitboards[3 | playerBit] = bitboards[3 | playerBit] & ~(1L << (rookRank | 7)) | (1L << (rookRank | 5));
+                        bitboards[playerBit] = bitboards[playerBit] & ~(1L << (rookRank | 7)) | (1L << (rookRank | 5));
+                        key ^= Zobrist.PIECE[3][player][rookRank | 7] ^ Zobrist.PIECE[3][player][rookRank | 5];
                     } else {
-                        bitboards[3 + playerBit] = bitboards[3 + playerBit] & ~(1L << rookRank) | (1L << (rookRank + 3));
-                        bitboards[playerBit] = bitboards[playerBit] & ~(1L << rookRank) | (1L << (rookRank + 3));
-                        key ^= Zobrist.PIECE[3][player][rookRank] ^ Zobrist.PIECE[3][player][rookRank + 3];
+                        bitboards[3 | playerBit] = bitboards[3 | playerBit] & ~(1L << rookRank) | (1L << (rookRank | 3));
+                        bitboards[playerBit] = bitboards[playerBit] & ~(1L << rookRank) | (1L << (rookRank | 3));
+                        key ^= Zobrist.PIECE[3][player][rookRank] ^ Zobrist.PIECE[3][player][rookRank | 3];
                     }
                 }
                 break;
@@ -404,9 +404,7 @@ public class Board {
             }
             default: break;
         }
-        player = 1 ^ player;
-        key ^= Zobrist.WHITE_MOVE;
-        return new Board(bitboards, player, castling, eSquare, halfMoveCount, board.fullMoveCount + (player == 0 ? 1 : 0), key);
+        return new Board(bitboards, other, castling, eSquare, halfMoveCount, board.fullMoveCount + player, key ^ Zobrist.WHITE_MOVE);
     }
 
     public static void draw(Board board) {
