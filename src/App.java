@@ -1,9 +1,11 @@
 import com.cb200.minchessv8.board.Board;
+import com.cb200.minchessv8.board.Fen;
 import com.cb200.minchessv8.testing.Perft;
 
 public class App {
     public static void main(String[] args) throws Exception {
-        Perft.all();
+        System.out.println(Fen.verify("4k3/8/8/8/8/8/7/4K3 w - - 0 1"));
+        //Perft.all();
         //Perft.some(6, 18);
         /*
         Board board = Board.fromFen("qqqk4/8/8/8/8/8/8/3K4 w - - 0 1");
