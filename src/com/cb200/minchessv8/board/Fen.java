@@ -39,7 +39,6 @@ public class Fen {
 		int[] pieceTotal = new int[12];
 		for(int i = 0; i < fen.length(); i ++) {
 			char c = fen.charAt(i);
-			System.out.print(c);
 			switch(fenState) {
 				case BOARD: {
 					if(Character.isDigit(c)) {
