@@ -10,6 +10,7 @@ public class Fen {
 	private final static int PAWN = 6;
 	private final static int WHITE = 0;
 	private final static int BLACK = 8;
+	private final static String PIECE_CHARS = "kqrbnpKQRBNP/";
 
 	/**
 	 *
@@ -35,10 +36,69 @@ public class Fen {
 		int row = 0;
 		int column = 0;
 		boolean stateOn = false;
+		int[] pieceTotal = new int[12];
 		for(int i = 0; i < fen.length(); i ++) {
 			char c = fen.charAt(i);
 			switch(fenState) {
 				case BOARD: {
+					if(Character.isDigit(c)) {
+						int charValue = c - '0';
+						if(column + charValue > 7) {
+							System.out.println("Pieces: Exceed Line");
+							return false;
+						}
+						column += charValue;
+					} else {
+						int charIndex = PIECE_CHARS.indexOf(c);
+						if(charIndex == -1 || (c == ' ' && column != 7 && row != 8)){
+							System.out.println("Pieces: Invalid Character");
+							return false;
+						}
+						if(c == '/') {
+							if(column != 7) {
+								System.out.println(
+									"Pieces: Line Length");
+								return false;
+							}
+							column = 0;
+						} else {
+							pieceTotal[charIndex] ++;
+							switch(charIndex) {
+								case 0:
+								case 6: {
+									if(pieceTotal[charIndex] > 1) {
+										System.out.println("Pieces: King Count");
+										return false;
+									}
+									break;
+								}
+								case 5:
+								case 11: {
+									if(pieceTotal[charIndex] > 8) {
+										System.out.println("Pieces: Pawn Count");
+										return false;
+									}
+									break;
+								}
+								case 1:
+								case 2:
+								case 3:
+								case 4:
+								case 7:
+								case 8:
+								case 9:
+								case 10: {
+									if(pieceTotal[charIndex] > 9) {
+										System.out.println("Pieces: Piece Count");
+										return false;
+									}
+									break;
+								}
+								default: break;
+							}
+						}
+					}
+					/*
 					switch(c) {
 						case '/': {if(column != 8) return false; row ++; column = 0; break;}
 						case 'k': {if(column > 7) return false; column ++; break;}
@@ -64,6 +124,7 @@ public class Fen {
 						case ' ': {if(row != 7 && column != 8) return false; fenState = FenState.SIDE_TO_MOVE; break;}
 						default: {System.out.println("Pieces"); return false;}
 					}
+					*/
 					break;
 				}
 				case SIDE_TO_MOVE: {
