@@ -411,7 +411,7 @@ public class Board {
 		System.out.println(boardString(board));
 	}
 
-    public static void moveList(Board board) {
+    public static void drawMoveList(Board board) {
         System.out.println(moveListString(board));
     }
 
