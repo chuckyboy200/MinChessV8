@@ -1,4 +1,4 @@
-package cb200.minchessv8.Util;
+package com.cb200.minchessv8.Util;
 
 public class B {
     

@@ -1,4 +1,4 @@
-package cb200.minchessv8.zobrist;
+package com.cb200.minchessv8.zobrist;
 
 public class Zobrist {
 

@@ -1,4 +1,4 @@
-package cb200.minchessv8.piece;
+package com.cb200.minchessv8.piece;
 
 public class Piece {
     

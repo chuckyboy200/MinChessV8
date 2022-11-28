@@ -1,4 +1,4 @@
-package cb200.minchessv8.board;
+package com.cb200.minchessv8.board;
 
 public class Fen {
     

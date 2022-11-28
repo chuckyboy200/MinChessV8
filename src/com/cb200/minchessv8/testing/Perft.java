@@ -1,6 +1,6 @@
-package cb200.minchessv8.testing;
+package com.cb200.minchessv8.testing;
 
-import cb200.minchessv8.board.Board;
+import com.cb200.minchessv8.board.Board;
 
 public class Perft {
     

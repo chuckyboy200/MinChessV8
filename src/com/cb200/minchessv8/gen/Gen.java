@@ -1,9 +1,9 @@
-package cb200.minchessv8.gen;
+package com.cb200.minchessv8.gen;
 
 import java.util.Arrays;
 
-import cb200.minchessv8.Util.B;
-import cb200.minchessv8.board.Board;
+import com.cb200.minchessv8.Util.B;
+import com.cb200.minchessv8.board.Board;
 
 public class Gen {
     
