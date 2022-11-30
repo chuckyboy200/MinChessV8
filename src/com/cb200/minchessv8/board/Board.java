@@ -23,7 +23,7 @@ public class Board {
     private final boolean hasGenerated;
 
     private Board() {
-        this.bitboard = new long[16];
+        this.bitboard = new long[15];
         this.player = 0;
         this.castling = 0;
         this.eSquare = -1;
@@ -35,7 +35,7 @@ public class Board {
     }
 
     private Board(long[] bitboards, int _player, int _castling, int _eSquare, int _halfMoveCount, int _fullMoveCount, long _key) {
-        this.bitboard = Arrays.copyOf(bitboards, bitboards.length);
+        this.bitboard = Arrays.copyOf(bitboards, 15);
         this.player = _player;
         this.castling = _castling;
         this.eSquare = _eSquare;
@@ -47,7 +47,7 @@ public class Board {
     }
 
     private Board(Board board, int[] moves) {
-        this.bitboard = Arrays.copyOf(board.bitboard, board.bitboard.length);
+        this.bitboard = Arrays.copyOf(board.bitboard, 15);
         this.player = board.player;
         this.castling = board.castling;
         this.eSquare = board.eSquare;
@@ -60,7 +60,7 @@ public class Board {
 
     public static Board fromFen(String fen) {
 		int[] pieces = Fen.getPieces(fen);
-		long[] _bitboards = new long[16];
+		long[] _bitboards = new long[15];
 		for(int i = 0; i < 64; i ++) {
 			int piece = pieces[i];
 			if(piece != 0) {
@@ -107,25 +107,25 @@ public class Board {
 
     public static boolean isSquareAttacked(Board board, int attackedSquare, int player) {
 		int playerBit = player << 3;
-		if((B.LEAP_ATTACK[attackedSquare] & board.bitboard(5 | playerBit)) != 0L) {
+		if((B.LEAP_ATTACK[attackedSquare] & board.bitboard[5 | playerBit]) != 0L) {
 			return true;
 		}
-		if((B.PAWN_ATTACK[1 ^ player][attackedSquare] & board.bitboard(6 | playerBit)) != 0L) {
+		if((B.PAWN_ATTACK[1 ^ player][attackedSquare] & board.bitboard[6 | playerBit]) != 0L) {
 			return true;
 		}
-		if((B.KING_ATTACK[attackedSquare] & board.bitboard(1 | playerBit)) != 0L) {
+		if((B.KING_ATTACK[attackedSquare] & board.bitboard[1 | playerBit]) != 0L) {
 			return true;
 		}
-		long allOccupancy = board.bitboard(0) | board.bitboard(8);
-		long result = Magic.queenMoves(attackedSquare, allOccupancy) & board.bitboard(2 | playerBit);
+		long allOccupancy = board.bitboard[0] | board.bitboard[8];
+		long result = Magic.queenMoves(attackedSquare, allOccupancy) & board.bitboard[2 | playerBit];
 		if(Long.bitCount(result) > 0) {
 			return true;
 		}
-		result = Magic.rookMoves(attackedSquare, allOccupancy) & board.bitboard(3 | playerBit);
+		result = Magic.rookMoves(attackedSquare, allOccupancy) & board.bitboard[3 | playerBit];
 		if(Long.bitCount(result) > 0) {
 			return true;
 		}
-		result = Magic.bishopMoves(attackedSquare, allOccupancy) & board.bitboard(4 | playerBit);
+		result = Magic.bishopMoves(attackedSquare, allOccupancy) & board.bitboard[4 | playerBit];
 		if(Long.bitCount(result) > 0) {
 			return true;
 		}
@@ -305,7 +305,183 @@ public class Board {
     }
 
     public static Board makeMove(Board board, int move) {
-        long[] bitboards = Arrays.copyOf(board.bitboard, board.bitboard.length);
+        long[] bitboards = Arrays.copyOf(board.bitboard, 15);
+        long key = board.key;
+        int startSquare = move & 0x3f;
+        int startPiece = getPiece(board, startSquare);
+        int startPieceType = startPiece & 0x7;
+        int targetSquare = (move >>> 6) & 0x3f;
+        int targetPiece = getPiece(board, targetSquare);
+        int halfMoveCount = board.halfMoveCount + 1;
+        int castling = board.castling;
+        int eSquare = board.eSquare;
+        if(eSquare != -1) {
+            key ^= Zobrist.ENPASSANT_FILE[eSquare & 7];
+            eSquare = -1;
+        }
+        /*
+        int player = board.player;
+        int playerBit = player << 3;
+        int other = 1 ^ player;
+        int otherBit = other << 3;
+        int startSquare = move & 0x3f;
+        long startSquareBit = 1L << startSquare;
+        int startPiece = getPiece(board, startSquare);
+        int startPieceType = startPiece & 0x7;
+        int targetSquare = (move >>> 6) & 0x3f;
+        long targetSquareBit = 1L << targetSquare;
+        int targetPiece = getPiece(board, targetSquare);
+        int targetPieceType = targetPiece & 7;
+        int halfMoveCount = board.halfMoveCount + 1;
+        int castling = board.castling;
+        */    
+        switch(startPieceType) {
+            case 2:
+            case 4:
+            case 5: {
+                long startSquareBit = 1L << startSquare;
+                long targetSquareBit = 1L << targetSquare;
+                int player = board.player;
+                bitboards[startPiece] ^= startSquareBit | targetSquareBit;
+                bitboards[player << 3] ^= startSquareBit | targetSquareBit;
+                key ^= Zobrist.PIECE[startPieceType][player][startSquare] | Zobrist.PIECE[startPieceType][player][targetSquare];
+                if(targetPiece != 0) {
+                    halfMoveCount = 0;
+                    int other = 1 ^ player;
+                    bitboards[targetPiece] ^= targetSquareBit;
+                    bitboards[other << 3] ^= targetSquareBit;
+                    key ^= Zobrist.PIECE[targetPiece & 7][other][targetSquare];
+                }
+                break;
+            }
+            case 1: {
+                int player = board.player;
+                int playerBit = player << 3;
+                int playerKingSideBit = (player == 0 ? 1 : 4);
+                int playerQueenSideBit = (player == 0 ? 2 : 8);
+                boolean playerKingSideCastling = (castling & playerKingSideBit) == 0;
+                boolean playerQueenSideCastling = (castling & playerQueenSideBit) == 0;
+                long startSquareBit = 1L << startSquare;
+                long targetSquareBit = 1L << targetSquare;
+                bitboards[startPiece] ^= startSquareBit | targetSquareBit;
+                bitboards[playerBit] ^= startSquareBit | targetSquareBit;
+                key ^= Zobrist.PIECE[startPieceType][player][startSquare] | Zobrist.PIECE[startPieceType][player][targetSquare];
+                if(playerKingSideCastling || playerQueenSideCastling) {
+                    key ^= (playerKingSideCastling ? Zobrist.KING_SIDE[player] : 0) ^ (playerQueenSideCastling ? Zobrist.QUEEN_SIDE[player] : 0);
+                    castling = castling & (player == 0 ? ~3 : ~12);
+                }
+                if(Math.abs(startSquare - targetSquare) == 2) {
+                    int rookRank = (player << 6) - (player << 3);
+                    if((targetSquare >>> 3) == 6) {
+                        bitboards[3 | playerBit] = bitboards[3 | playerBit] & ~(1L << (rookRank | 7)) | (1L << (rookRank | 5));
+                        bitboards[playerBit] = bitboards[playerBit] & ~(1L << (rookRank | 7)) | (1L << (rookRank | 5));
+                        key ^= Zobrist.PIECE[3][player][rookRank | 7] ^ Zobrist.PIECE[3][player][rookRank | 5];
+                    } else {
+                        bitboards[3 | playerBit] = bitboards[3 | playerBit] & ~(1L << rookRank) | (1L << (rookRank | 3));
+                        bitboards[playerBit] = bitboards[playerBit] & ~(1L << rookRank) | (1L << (rookRank | 3));
+                        key ^= Zobrist.PIECE[3][player][rookRank] ^ Zobrist.PIECE[3][player][rookRank | 3];
+                    }
+                }
+                if(targetPiece != 0) {
+                    halfMoveCount = 0;
+                    int other = 1 ^ player;
+                    bitboards[targetPiece] ^= targetSquareBit;
+                    bitboards[other << 3] ^= targetSquareBit;
+                    key ^= Zobrist.PIECE[targetPiece & 7][other][targetSquare];
+                }
+                break;
+            }
+            case 3: {
+                long startSquareBit = 1L << startSquare;
+                long targetSquareBit = 1L << targetSquare;
+                int player = board.player;
+                bitboards[startPiece] ^= startSquareBit | targetSquareBit;
+                bitboards[player << 3] ^= startSquareBit | targetSquareBit;
+                key ^= Zobrist.PIECE[startPieceType][player][startSquare] | Zobrist.PIECE[startPieceType][player][targetSquare];
+                int playerKingSideBit = (player == 0 ? 1 : 4);
+                int playerQueenSideBit = (player == 0 ? 2 : 8);
+                boolean playerKingSideCastling = (castling & playerKingSideBit) == 0;
+                boolean playerQueenSideCastling = (castling & playerQueenSideBit) == 0;
+                if(startSquare == (player == 0 ? 7 : 63) && playerKingSideCastling) {
+                    castling ^= playerKingSideBit;
+                    key ^= Zobrist.KING_SIDE[player];
+                } else {
+                    if(startSquare == (player == 0 ? 0 : 56) && playerQueenSideCastling) {
+                        castling ^= playerQueenSideBit;
+                        key ^= Zobrist.QUEEN_SIDE[player];
+                    }
+                }
+                if(targetPiece != 0) {
+                    int other = 1 ^ player;
+                    halfMoveCount = 0;
+                    bitboards[targetPiece] ^= targetSquareBit;
+                    bitboards[other << 3] ^= targetSquareBit;
+                    key ^= Zobrist.PIECE[targetPiece & 7][other][targetSquare];
+                }
+                break;
+            }
+            case 6: {
+                int promotePiece = (move >>> 12) & 0xf;
+                long targetSquareBit = 1L << targetSquare;
+                int player = board.player;
+                if(promotePiece == 0) {
+                    long startSquareBit = 1L << startSquare;
+                    bitboards[startPiece] ^= startSquareBit | targetSquareBit;
+                    bitboards[player << 3] ^= startSquareBit | targetSquareBit;
+                    key ^= key ^= Zobrist.PIECE[startPieceType][player][startSquare] | Zobrist.PIECE[startPieceType][player][targetSquare];
+                } else {
+                    long startSquareBit = 1L << startSquare;
+                    bitboards[startPiece] ^= startSquareBit;
+                    bitboards[promotePiece] ^= targetSquareBit;
+                    bitboards[player << 3] ^= startSquareBit | targetSquareBit;
+                    key ^= key ^= Zobrist.PIECE[startPieceType][player][startSquare] | Zobrist.PIECE[promotePiece & 7][player][targetSquare];
+                }
+                if(targetPiece != 0) {
+                    int other = 1 ^ player;
+                    halfMoveCount = 0;
+                    bitboards[targetPiece] ^= targetSquareBit;
+                    bitboards[other << 3] ^= targetSquareBit;
+                    key ^= Zobrist.PIECE[targetPiece & 7][other][targetSquare];
+                }
+                if(targetSquare == board.eSquare) {
+                    int other = 1 ^ player;
+                    int otherBit = other << 3;
+                    int captureSquare = targetSquare + (player == 0 ? -8 : 8);
+                    long captureSquareBit = 1L << captureSquare;
+                    halfMoveCount = 0;
+                    bitboards[6 | otherBit] ^= captureSquareBit;
+                    bitboards[otherBit] ^= captureSquareBit;
+                    key ^= Zobrist.PIECE[6][other][captureSquare];
+                }
+                if(Math.abs(startSquare - targetSquare) == 16) {
+                    eSquare = startSquare + (player == 0 ? 8 : -8);
+                    key ^= Zobrist.ENPASSANT_FILE[eSquare & 7];
+                }
+            }
+        }
+        if((targetPiece & 7) == 3) {
+            int other = 1 ^ board.player;
+            int otherKingSideBit = other == 0 ? 1 : 4;
+            int otherQueenSideBit = other == 0 ? 2 : 8;
+            boolean otherKingSideCastling = (castling & otherKingSideBit) != 0;
+            boolean otherQueenSideCastling = (castling & otherQueenSideBit) != 0;
+            if(targetSquare == (other == 0 ? 7 : 63) && otherKingSideCastling) {
+                castling ^= otherKingSideBit;
+                key ^= Zobrist.KING_SIDE[other];
+            } else {
+                if(targetSquare == (other == 0 ? 0 : 56) && otherQueenSideCastling) {
+                    castling ^= otherQueenSideBit;
+                    key ^= Zobrist.QUEEN_SIDE[other];
+                }
+            }
+        }
+        return new Board(bitboards, 1 ^ board.player, castling, eSquare, halfMoveCount, board.fullMoveCount + board.player, key);
+    }
+
+
+    /*
+    public static Board makeMove(Board board, int move) {
+        long[] bitboards = Arrays.copyOf(board.bitboard, 15);
         long key = board.key;
         int player = board.player;
         int playerBit = player << 3;
@@ -325,6 +501,14 @@ public class Board {
         int halfMoveCount = board.halfMoveCount + 1;
         int eSquare = board.eSquare;
         int castling = board.castling;
+        int playerKingSideBit = player == 0 ? 1 : 4;
+        int playerQueenSideBit = player == 0 ? 2 : 8;
+        int otherKingSideBit = player == 0 ? 4 : 1;
+        int otherQueenSideBit = player == 0 ? 8 : 2;
+        boolean playerKingSideCastling = (castling & playerKingSideBit) != 0;
+        boolean playerQueenSideCastling = (castling & playerQueenSideBit) != 0;
+        boolean otherKingSideCastling = (castling & otherKingSideBit) != 0;
+        boolean otherQueenSideCastling = (castling & otherQueenSideBit) != 0;
         bitboards[startPiece] &= ~startSquareBit;
 		bitboards[playerBit] &= ~startSquareBit;
         key ^= Zobrist.PIECE[startPieceType][player][startSquare];
@@ -334,12 +518,12 @@ public class Board {
             bitboards[otherBit] &= ~targetSquareBit;
             key ^= Zobrist.PIECE[targetPieceType][other][targetSquare];
             if(targetPieceType == 3) {
-                if(targetSquare == (player == 0 ? 63 : 7) && (castling & (player == 0 ? 4 : 1)) != 0) {
-                    castling ^= (player == 0 ? 4 : 1);
+                if(targetSquare == (player == 0 ? 63 : 7) && otherKingSideCastling) {
+                    castling ^= otherKingSideBit;
                     key ^= Zobrist.KING_SIDE[other];
                 } else {
-                    if(targetSquare == (player == 0 ? 56 : 0) && (castling & (player == 0 ? 8 : 2)) != 0) {
-                        castling ^= (player == 0 ? 8 : 2);
+                    if(targetSquare == (player == 0 ? 56 : 0) && otherQueenSideCastling) {
+                        castling ^= otherQueenSideBit;
                         key ^= Zobrist.QUEEN_SIDE[other];
                     }
                 }
@@ -367,7 +551,10 @@ public class Board {
         }
         switch(startPieceType) {
             case 1: {
-                castling = castling & (player == 0 ? ~3 : ~12);
+                if(playerKingSideCastling || playerQueenSideCastling) {
+                    key ^= (playerKingSideCastling ? Zobrist.KING_SIDE[player] : 0) ^ (playerQueenSideCastling ? Zobrist.QUEEN_SIDE[player] : 0);
+                    castling = castling & (player == 0 ? ~3 : ~12);
+                }
                 if(Math.abs(startSquare - targetSquare) == 2) {
                     int rookRank = player * 56;
                     if(targetFile == 6) {
@@ -383,12 +570,12 @@ public class Board {
                 break;
             }
             case 3: {
-                if(startSquare == (player == 0 ? 7 : 63) && (castling & (player == 0 ? 1 : 4)) != 0) {
-                    castling ^= (player == 0 ? 1 : 4);
+                if(startSquare == (player == 0 ? 7 : 63) && playerKingSideCastling) {
+                    castling ^= playerKingSideBit;
                     key ^= Zobrist.KING_SIDE[player];
                 } else {
-                    if(startSquare == (player == 0 ? 0 : 56) && (castling & (player == 0 ? 2 : 8)) != 0) {
-                        castling ^= (player == 0 ? 2 : 8);
+                    if(startSquare == (player == 0 ? 0 : 56) && playerQueenSideCastling) {
+                        castling ^= playerQueenSideBit;
                         key ^= Zobrist.QUEEN_SIDE[player];
                     }
                 }
@@ -406,6 +593,7 @@ public class Board {
         }
         return new Board(bitboards, other, castling, eSquare, halfMoveCount, board.fullMoveCount + player, key ^ Zobrist.WHITE_MOVE);
     }
+*/
 
     public static void draw(Board board) {
 		System.out.println(boardString(board));
