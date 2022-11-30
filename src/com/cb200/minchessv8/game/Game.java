@@ -57,8 +57,8 @@ public class Game {
         Board.drawMoveList(this.board);
     }
 
-    public void generateMoves() {
-        this.board = Board.gen(this.board, true);
+    public void generateMoves(boolean legal) {
+        this.board = Board.gen(this.board, legal);
     }
 
 }
