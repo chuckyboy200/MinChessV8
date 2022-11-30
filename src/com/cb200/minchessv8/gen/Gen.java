@@ -26,31 +26,33 @@ public class Gen {
 		long bishops = board.bitboard(playerBit | 4);
 		long knights = board.bitboard(playerBit | 5);
 		long pawns = board.bitboard(playerBit | 6);
-		long allOccupancy = board.bitboard(0) | board.bitboard(8);
+		long playerOccupancy = board.bitboard(playerBit);
+		long otherOccupancy = board.bitboard(8 ^ playerBit);
+		long allOccupancy = playerOccupancy | otherOccupancy;
 		int[] moves = new int[127];
 		int moveListLength = 0;
-		moveListLength = getKingMoves(board, moves, king, player, moveListLength, allOccupancy);
+		moveListLength = getKingMoves(board, moves, king, player, moveListLength, allOccupancy, playerOccupancy);
 		if(queens != 0L) {
-			moveListLength = getQueenMoves(board, moves, queens, player, moveListLength, allOccupancy);
+			moveListLength = getQueenMoves(board, moves, queens, player, moveListLength, allOccupancy, playerOccupancy);
 		}
 		if(rooks != 0L) {
-			moveListLength = getRookMoves(board, moves, rooks, player, moveListLength, allOccupancy);
+			moveListLength = getRookMoves(board, moves, rooks, player, moveListLength, allOccupancy, playerOccupancy);
 		}
 		if(bishops != 0L) {
-			moveListLength = getBishopMoves(board, moves, bishops, player, moveListLength, allOccupancy);
+			moveListLength = getBishopMoves(board, moves, bishops, player, moveListLength, allOccupancy, playerOccupancy);
 		}
 		if(knights != 0L) {
-			moveListLength = getKnightMoves(board, moves, knights, player, moveListLength);
+			moveListLength = getKnightMoves(board, moves, knights, player, moveListLength, playerOccupancy);
 		}
 		if(pawns != 0L) {
-			moveListLength = getPawnMoves(board, moves, pawns, player, moveListLength, allOccupancy);
+			moveListLength = getPawnMoves(board, moves, pawns, player, moveListLength, allOccupancy, otherOccupancy);
 		}
 		return legal ? purgeIllegalMoves(board, moves, moveListLength) : Arrays.copyOf(moves, moveListLength);
 	}
 
-	private static int getKingMoves(Board board, int[] moves, long king, int player, int moveListLength, long allOccupancy) {
+	private static int getKingMoves(Board board, int[] moves, long king, int player, int moveListLength, long allOccupancy, long playerOccupancy) {
 		int square = Long.numberOfTrailingZeros(king);
-		long result = B.KING_ATTACK[square] & ~board.bitboard(player << 3);
+		long result = B.KING_ATTACK[square] & ~playerOccupancy;
 		while(result != 0L) {
 			addMove(moves, square, Long.numberOfTrailingZeros(result), moveListLength);
 			moveListLength ++;
@@ -77,12 +79,11 @@ public class Gen {
 		return moveListLength;
 	}
 
-	private static int getQueenMoves(Board board, int[] moves, long queens, int player, int moveListLength, long allOccupancy) {
-		int playerBit = player << 3;
+	private static int getQueenMoves(Board board, int[] moves, long queens, int player, int moveListLength, long allOccupancy, long playerOccupancy) {
 		while(queens != 0L) {
 			int square = Long.numberOfTrailingZeros(queens);
 			queens &= queens - 1;
-			long result = Magic.queenMoves(square, allOccupancy) & ~board.bitboard(playerBit);
+			long result = Magic.queenMoves(square, allOccupancy) & ~playerOccupancy;
 			while(result != 0L) {
 				addMove(moves, square, Long.numberOfTrailingZeros(result), moveListLength);
 				moveListLength ++;
@@ -92,12 +93,11 @@ public class Gen {
 		return moveListLength;
 	}
 
-	private static int getRookMoves(Board board, int[] moves, long rooks, int player, int moveListLength, long allOccupancy) {
-		int playerBit = player << 3;
+	private static int getRookMoves(Board board, int[] moves, long rooks, int player, int moveListLength, long allOccupancy, long playerOccupancy) {
 		while(rooks != 0L) {
 			int square = Long.numberOfTrailingZeros(rooks);
 			rooks &= rooks - 1;
-			long result = Magic.rookMoves(square, allOccupancy) & ~board.bitboard(playerBit);
+			long result = Magic.rookMoves(square, allOccupancy) & ~playerOccupancy;
 			while(result != 0L) {
 				addMove(moves, square, Long.numberOfTrailingZeros(result), moveListLength);
 				moveListLength ++;
@@ -107,12 +107,11 @@ public class Gen {
 		return moveListLength;
 	}
 
-	private static int getBishopMoves(Board board, int[] moves, long bishops, int player, int moveListLength, long allOccupancy) {
-		int playerBit = player << 3;
+	private static int getBishopMoves(Board board, int[] moves, long bishops, int player, int moveListLength, long allOccupancy, long playerOccupancy) {
 		while(bishops != 0L) {
 			int square = Long.numberOfTrailingZeros(bishops);
 			bishops &= bishops - 1;
-			long result = Magic.bishopMoves(square, allOccupancy) & ~board.bitboard(playerBit);
+			long result = Magic.bishopMoves(square, allOccupancy) & ~playerOccupancy;
 			while(result != 0L) {
 				addMove(moves, square, Long.numberOfTrailingZeros(result), moveListLength);
 				moveListLength ++;
@@ -122,12 +121,11 @@ public class Gen {
 		return moveListLength;
 	}
 
-	private static int getKnightMoves(Board board, int[] moves, long knights, int player, int moveListLength) {
-		int playerBit = player << 3;
+	private static int getKnightMoves(Board board, int[] moves, long knights, int player, int moveListLength, long playerOccupancy) {
 		while(knights != 0L) {
 			int square = Long.numberOfTrailingZeros(knights);
 			knights &= knights - 1;
-			long result = B.LEAP_ATTACK[square] & ~board.bitboard(playerBit);
+			long result = B.LEAP_ATTACK[square] & ~playerOccupancy;
 			while(result != 0L) {
 				addMove(moves, square, Long.numberOfTrailingZeros(result), moveListLength);
 				moveListLength ++;
@@ -137,7 +135,7 @@ public class Gen {
 		return moveListLength;
 	}
 
-	private static int getPawnMoves(Board board, int[] moves, long pawns, int player, int moveListLength, long allOccupancy) {
+	private static int getPawnMoves(Board board, int[] moves, long pawns, int player, int moveListLength, long allOccupancy, long otherOccupancy) {
 		int playerBit = player << 3;
 		int eSquare = board.eSquare();
 		while(pawns != 0L) {
@@ -159,7 +157,7 @@ public class Gen {
 					}
 				}
 			}
-			long result = B.PAWN_ATTACK[player][square] & (board.bitboard(8 ^ playerBit) | (board.eSquare() != -1 ? (1L << eSquare) : 0));
+			long result = B.PAWN_ATTACK[player][square] & (otherOccupancy | (board.eSquare() != -1 ? (1L << eSquare) : 0));
 			while(result != 0L) {
 				int targetSquare = Long.numberOfTrailingZeros(result);
 				result &= result - 1;
@@ -181,14 +179,14 @@ public class Gen {
 	}
 
 	private static void addMove(int[] moves, int start, int target, int moveListLength) {
-		moves[moveListLength] = moves[moveListLength] | start | (target << 6);
+		moves[moveListLength] |= start | (target << 6);
 	}
 
 	private static void addPromoteMoves(int[] moves, int start, int target, int playerBit, int moveListLength) {
-		moves[moveListLength] = moves[moveListLength ++] | start | (target << 6) | ((2 | playerBit) << 12);
-		moves[moveListLength] = moves[moveListLength ++] | start | (target << 6) | ((3 | playerBit) << 12);
-		moves[moveListLength] = moves[moveListLength ++] | start | (target << 6) | ((4 | playerBit) << 12);
-		moves[moveListLength] = moves[moveListLength ++] | start | (target << 6) | ((5 | playerBit) << 12);
+		moves[moveListLength ++] |= start | (target << 6) | ((2 | playerBit) << 12);
+		moves[moveListLength ++] |= start | (target << 6) | ((3 | playerBit) << 12);
+		moves[moveListLength ++] |= start | (target << 6) | ((4 | playerBit) << 12);
+		moves[moveListLength ++] |= start | (target << 6) | ((5 | playerBit) << 12);
 	}
 
 	private static int[] purgeIllegalMoves(Board board, int[] moves, int moveListLength) {
