@@ -2,6 +2,26 @@ package com.cb200.minchessv8.piece;
 
 public class Piece {
     
+	public final static int KING = 1;
+	public final static int WHITE_KING = 1;
+	public final static int QUEEN = 2;
+	public final static int WHITE_QUEEN = 2;
+	public final static int ROOK = 3;
+	public final static int WHITE_ROOK = 3;
+	public final static int BISHOP = 4;
+	public final static int WHITE_BISHOP = 4;
+	public final static int KNIGHT = 5;
+	public final static int WHITE_KNIGHT = 5;
+	public final static int PAWN = 6;
+	public final static int WHITE_PAWN = 6;
+	public final static int TYPE = 7;
+	public final static int BLACK_KING = 9;
+	public final static int BLACK_QUEEN = 10;
+	public final static int BLACK_ROOK = 11;
+	public final static int BLACK_BISHOP = 12;
+	public final static int BLACK_KNIGHT = 13;
+	public final static int BLACK_PAWN = 14;
+
     public enum Type {
 		EMPTY, KING, QUEEN, ROOK, BISHOP, KNIGHT, PAWN, PASSED_PAWN;
 	};
