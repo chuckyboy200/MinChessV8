@@ -12,6 +12,8 @@ public class Value {
 	public final static int[] KINGSIDE_BIT = { 1, 4 };
 	public final static int[] QUEENSIDE_BIT = { 2, 8 };
 
+	public final static String FILE = "abcdefgh";
+
     private Value() {}
 
     

@@ -22,8 +22,6 @@ import com.cb200.minchessv8.zobrist.Zobrist;
  * 
  */
 public class Board {
-
-    private final static String FILE = "abcdefgh";
     
     private final long[] bitboard;
     private final int player;
@@ -300,7 +298,7 @@ public class Board {
      * @return a string representing the algebraic format for a move
      */
     public String moveAlgebraic(int index) {
-        return FILE.charAt(this.move[index] & 7) + Integer.toString(((this.move[index] & 0x3f) >>> 3) + 1) + FILE.charAt((this.move[index] >>> 6) & 7) + Integer.toString(((this.move[index] >>> 6 & 0x3f) >>> 3) + 1);
+        return Value.FILE.charAt(this.move[index] & 7) + Integer.toString(((this.move[index] & 0x3f) >>> 3) + 1) + Value.FILE.charAt((this.move[index] >>> 6) & 7) + Integer.toString(((this.move[index] >>> 6 & 0x3f) >>> 3) + 1);
     }
 
     /**
@@ -339,7 +337,7 @@ public class Board {
                         if((square & 7) == (startSquare & 7)) {
                             notation += Integer.toString((startSquare >>> 3) + 1);
                         } else {
-                            notation += FILE.charAt(startSquare & 7);
+                            notation += Value.FILE.charAt(startSquare & 7);
                         }
                         break;
                     }
@@ -357,7 +355,7 @@ public class Board {
                         if((square & 7) == (startSquare & 7)) {
                             notation += Integer.toString((startSquare >>> 3) + 1);
                         } else {
-                            notation += FILE.charAt(startSquare & 7);
+                            notation += Value.FILE.charAt(startSquare & 7);
                         }
                         break;
                     }
@@ -375,7 +373,7 @@ public class Board {
                         if((square & 7) == (startSquare & 7)) {
                             notation += Integer.toString((startSquare >>> 3) + 1);
                         } else {
-                            notation += FILE.charAt(startSquare & 7);
+                            notation += Value.FILE.charAt(startSquare & 7);
                         }
                         break;
                     }
@@ -388,7 +386,7 @@ public class Board {
 					if(Long.bitCount(B.FILE[startSquare & 7] & this.bitboard[Piece.KNIGHT | playerBit]) > 1) {
 						notation += Integer.toString((startSquare >>> 3) + 1);
 					} else {
-						notation += FILE.charAt(startSquare & 7);
+						notation += Value.FILE.charAt(startSquare & 7);
 					}
 				}
 				break;
@@ -401,11 +399,11 @@ public class Board {
 		}
 		if(getPiece(this, targetSquare) != 0 || targetSquare == this.eSquare) {
 			if(startType == Piece.PAWN) {
-				notation += FILE.charAt(startSquare & 7);
+				notation += Value.FILE.charAt(startSquare & 7);
 			}
 			notation += "x";
 		}
-		notation += FILE.charAt(targetSquare & 7) + Integer.toString((targetSquare >>> 3) + 1);
+		notation += Value.FILE.charAt(targetSquare & 7) + Integer.toString((targetSquare >>> 3) + 1);
 		if((this.move[index] >>> 12) != Value.NONE) {
 			notation += "=";
 			switch((this.move[index] >>> 12) & Piece.TYPE) {
@@ -744,7 +742,7 @@ public class Board {
     private static String fieldString(Board board) {
         String fieldString = board.player == Value.WHITE ? "White to Move\n" : "Black to Move\n";
         fieldString += "castling: " + (board.castling == Value.NONE ? "-" : board.kingSide(Value.WHITE) ? "K" : "") + (board.queenSide(Value.WHITE) ? "Q" : "") + (board.kingSide(Value.BLACK) ? "k" : "") + (board.queenSide(Value.BLACK) ? "q" : "") + "\n";
-        fieldString += "eSquare: " + (board.eSquare == Value.INVALID ? "-" : FILE.charAt(board.eSquare & 7) + Integer.toString(((board.eSquare & 0x3f) >>> 3) + 1)) + "\n";
+        fieldString += "eSquare: " + (board.eSquare == Value.INVALID ? "-" : Value.FILE.charAt(board.eSquare & 7) + Integer.toString(((board.eSquare & 0x3f) >>> 3) + 1)) + "\n";
         fieldString += "halfMoveCount: " + board.halfMoveCount + "\n";
         fieldString += "fullMoveCount: " + board.fullMoveCount + "\n";
         fieldString += "key: " + Long.toHexString(board.key) + "\n";
