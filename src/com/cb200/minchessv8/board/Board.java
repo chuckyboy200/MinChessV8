@@ -534,6 +534,7 @@ public class Board {
                 int promotePiece = (move >>> 12) & 0xf;
                 long targetSquareBit = 1L << targetSquare;
                 int player = board.player;
+                halfMoveCount = 0;
                 if(promotePiece == Value.NONE) {
                     long startSquareBit = 1L << startSquare;
                     bitboards[startPiece] ^= startSquareBit | targetSquareBit;
@@ -719,7 +720,7 @@ public class Board {
 			for(int file = 0; file < 8; file ++) {
 				int square = rank << 3 | file;
 				int piece = getPiece(board, square);
-				if(piece != 0) {
+				if(piece != Value.NONE) {
                     boardString += LongType.values()[piece].shortString() + " ";
 				} else {
                     boardString += ". ";
@@ -732,7 +733,7 @@ public class Board {
 
     private static String moveListString(Board board) {
         if(board.hasGenerated) {
-            if(board.move.length == 0) {
+            if(board.move.length == Value.NONE) {
                 return "No Legal Moves Available\n";
             }
             String moveListString = "";
@@ -745,9 +746,9 @@ public class Board {
     }
 
     private static String fieldString(Board board) {
-        String fieldString = board.player == 0 ? "White to Move\n" : "Black to Move\n";
-        fieldString += "castling: " + (board.castling == 0 ? "-" : board.kingSide(0) ? "K" : "") + (board.queenSide(0) ? "Q" : "") + (board.kingSide(1) ? "k" : "") + (board.queenSide(1) ? "q" : "") + "\n";
-        fieldString += "eSquare: " + (board.eSquare == -1 ? "-" : FILE.charAt(board.eSquare & 7) + Integer.toString(((board.eSquare & 0x3f) >>> 3) + 1)) + "\n";
+        String fieldString = board.player == Value.WHITE ? "White to Move\n" : "Black to Move\n";
+        fieldString += "castling: " + (board.castling == Value.NONE ? "-" : board.kingSide(Value.WHITE) ? "K" : "") + (board.queenSide(Value.WHITE) ? "Q" : "") + (board.kingSide(Value.BLACK) ? "k" : "") + (board.queenSide(Value.BLACK) ? "q" : "") + "\n";
+        fieldString += "eSquare: " + (board.eSquare == Value.INVALID ? "-" : FILE.charAt(board.eSquare & 7) + Integer.toString(((board.eSquare & 0x3f) >>> 3) + 1)) + "\n";
         fieldString += "halfMoveCount: " + board.halfMoveCount + "\n";
         fieldString += "fullMoveCount: " + board.fullMoveCount + "\n";
         fieldString += "key: " + Long.toHexString(board.key) + "\n";
@@ -772,12 +773,12 @@ public class Board {
         if(board.player != this.player || board.castling != this.castling || board.eSquare != this.eSquare || board.halfMoveCount != this.halfMoveCount || board.fullMoveCount != this.fullMoveCount || board.hasGenerated != this.hasGenerated) {
             return false;
         }
-        for(int i = 0; i < 16; i ++) {
+        for(int i = 0; i < board.bitboard.length; i ++) {
             if(board.bitboard[i] != this.bitboard[i]) {
                 return false;
             }
         }
-        if(board.move.length != 0) {
+        if(board.move.length != Value.NONE) {
             for(int i = 0; i < board.move.length; i ++) {
                 if(board.move[i] != this.move[i]) {
                     return false;
