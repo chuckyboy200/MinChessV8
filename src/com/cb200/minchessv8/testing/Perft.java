@@ -120,7 +120,7 @@ public static long perftSearch(int depth, int maxDepth, int maxNum, Board board)
     int playerBit = player << 3;
     int num = 0;
     for(int i = 0; i < board.moveSize(); i ++) {
-        Board boardAfterMove = Board.makeMove(board, board.move(i));
+        Board boardAfterMove = Board.makeSimpleMove(board, board.move(i));
         if(Board.isSquareAttacked(boardAfterMove, Long.numberOfTrailingZeros(boardAfterMove.bitboard(1 | playerBit)), 1 ^ player)) {
             continue;
         }

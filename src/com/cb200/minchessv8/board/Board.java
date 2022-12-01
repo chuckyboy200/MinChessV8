@@ -102,6 +102,10 @@ public class Board {
 		return board.hasGenerated ? board : new Board(board, Gen.moves(board, legal));
 	}
 
+    public static Board genTactical(Board board, boolean legal) {
+        return new Board(board, Gen.tacticalMoves(board, legal));
+    }
+
     /**
      * Get the int value of a piece from a square. If there is no piece on that square, return 0
      * 
@@ -539,17 +543,16 @@ public class Board {
                     long startSquareBit = 1L << startSquare;
                     bitboards[startPiece] ^= startSquareBit | targetSquareBit;
                     bitboards[player << 3] ^= startSquareBit | targetSquareBit;
-                    key ^= key ^= Zobrist.PIECE[startPieceType][player][startSquare] | Zobrist.PIECE[startPieceType][player][targetSquare];
+                    key ^= Zobrist.PIECE[startPieceType][player][startSquare] | Zobrist.PIECE[startPieceType][player][targetSquare];
                 } else {
                     long startSquareBit = 1L << startSquare;
                     bitboards[startPiece] ^= startSquareBit;
                     bitboards[promotePiece] ^= targetSquareBit;
                     bitboards[player << 3] ^= startSquareBit | targetSquareBit;
-                    key ^= key ^= Zobrist.PIECE[startPieceType][player][startSquare] | Zobrist.PIECE[promotePiece & Piece.TYPE][player][targetSquare];
+                    key ^= Zobrist.PIECE[startPieceType][player][startSquare] | Zobrist.PIECE[promotePiece & Piece.TYPE][player][targetSquare];
                 }
                 if(targetPiece != Value.NONE) {
                     int other = 1 ^ player;
-                    halfMoveCount = 0;
                     bitboards[targetPiece] ^= targetSquareBit;
                     bitboards[other << 3] ^= targetSquareBit;
                     key ^= Zobrist.PIECE[targetPiece & Piece.TYPE][other][targetSquare];
@@ -559,7 +562,6 @@ public class Board {
                     int otherBit = other << 3;
                     int captureSquare = targetSquare + (player == Value.WHITE ? -8 : 8);
                     long captureSquareBit = 1L << captureSquare;
-                    halfMoveCount = 0;
                     bitboards[6 | otherBit] ^= captureSquareBit;
                     bitboards[otherBit] ^= captureSquareBit;
                     key ^= Zobrist.PIECE[Piece.PAWN][other][captureSquare];
@@ -587,6 +589,117 @@ public class Board {
             }
         }
         return new Board(bitboards, 1 ^ board.player, castling, eSquare, halfMoveCount, board.fullMoveCount + board.player, key);
+    }
+
+    public static Board makeSimpleMove(Board board, int move) {
+        long[] bitboards = Arrays.copyOf(board.bitboard, 15);
+        long key = board.key;
+        int startSquare = move & 0x3f;
+        int startPiece = getPiece(board, startSquare);
+        int startPieceType = startPiece & Piece.TYPE;
+        int targetSquare = (move >>> 6) & 0x3f;
+        int targetPiece = getPiece(board, targetSquare);
+        int castling = board.castling;
+        int eSquare = -1;
+        switch(startPieceType) {
+            case Piece.QUEEN:
+            case Piece.BISHOP:
+            case Piece.KNIGHT: {
+                long startSquareBit = 1L << startSquare;
+                long targetSquareBit = 1L << targetSquare;
+                int playerBit = board.player << 3;
+                bitboards[startPiece] ^= startSquareBit | targetSquareBit;
+                bitboards[playerBit] ^= startSquareBit | targetSquareBit;
+                if(targetPiece != Value.NONE) {
+                    bitboards[targetPiece] ^= targetSquareBit;
+                    bitboards[8 ^ playerBit] ^= targetSquareBit;
+                }
+                break;
+            }
+            case Piece.KING: {
+                int player = board.player;
+                int playerBit = player << 3;
+                long startSquareBit = 1L << startSquare;
+                long targetSquareBit = 1L << targetSquare;
+                bitboards[startPiece] ^= startSquareBit | targetSquareBit;
+                bitboards[playerBit] ^= startSquareBit | targetSquareBit;
+                castling &= (player == Value.WHITE ? ~3 : ~12);
+                if(Math.abs(startSquare - targetSquare) == 2) {
+                    int rookRank = (player << 6) - (playerBit);
+                    if((targetSquare & 7) == 6) {
+                        bitboards[Piece.ROOK | playerBit] = bitboards[Piece.ROOK | playerBit] & ~(1L << (rookRank | 7)) | (1L << (rookRank | 5));
+                        bitboards[playerBit] = bitboards[playerBit] & ~(1L << (rookRank | 7)) | (1L << (rookRank | 5));
+                    } else {
+                        bitboards[Piece.ROOK | playerBit] = bitboards[Piece.ROOK | playerBit] & ~(1L << rookRank) | (1L << (rookRank | 3));
+                        bitboards[playerBit] = bitboards[playerBit] & ~(1L << rookRank) | (1L << (rookRank | 3));
+                    }
+                }
+                if(targetPiece != Value.NONE) {
+                    bitboards[targetPiece] ^= targetSquareBit;
+                    bitboards[8 ^ playerBit] ^= targetSquareBit;
+                }
+                break;
+            }
+            case Piece.ROOK: {
+                long startSquareBit = 1L << startSquare;
+                long targetSquareBit = 1L << targetSquare;
+                int player = board.player;
+                bitboards[startPiece] ^= startSquareBit | targetSquareBit;
+                bitboards[player << 3] ^= startSquareBit | targetSquareBit;
+                if(startSquare == (player == Value.WHITE ? 7 : 63)) {
+                    castling &= (player == Value.WHITE ? ~1 : ~4);
+                } else {
+                    if(startSquare == (player == Value.WHITE ? 0 : 56)) {
+                        castling &= (player == Value.WHITE ? ~2 : ~8);
+                    }
+                }
+                if(targetPiece != Value.NONE) {
+                    bitboards[targetPiece] ^= targetSquareBit;
+                    bitboards[8 ^ (player << 3)] ^= targetSquareBit;
+                }
+                break;
+            }
+            case Piece.PAWN: {
+                int promotePiece = (move >>> 12) & 0xf;
+                long targetSquareBit = 1L << targetSquare;
+                int player = board.player;
+                if(promotePiece == Value.NONE) {
+                    long startSquareBit = 1L << startSquare;
+                    bitboards[startPiece] ^= startSquareBit | targetSquareBit;
+                    bitboards[player << 3] ^= startSquareBit | targetSquareBit;
+                } else {
+                    long startSquareBit = 1L << startSquare;
+                    bitboards[startPiece] ^= startSquareBit;
+                    bitboards[promotePiece] ^= targetSquareBit;
+                    bitboards[player << 3] ^= startSquareBit | targetSquareBit;
+                }
+                if(targetPiece != Value.NONE) {
+                    bitboards[targetPiece] ^= targetSquareBit;
+                    bitboards[8 ^ (player << 3)] ^= targetSquareBit;
+                }
+                if(targetSquare == board.eSquare) {
+                    int otherBit = (1 ^ player) << 3;
+                    int captureSquare = targetSquare + (player == Value.WHITE ? -8 : 8);
+                    long captureSquareBit = 1L << captureSquare;
+                    bitboards[6 | otherBit] ^= captureSquareBit;
+                    bitboards[otherBit] ^= captureSquareBit;
+                }
+                if(Math.abs(startSquare - targetSquare) == 16) {
+                    eSquare = startSquare + (player == Value.WHITE ? 8 : -8);
+                }
+            }
+        }
+        if((targetPiece & Piece.TYPE) == Piece.ROOK) {
+            int other = 1 ^ board.player;
+            if(targetSquare == (other == Value.WHITE ? 7 : 63)) {
+                castling &= (other == Value.WHITE ? ~1 : ~4);
+            } else {
+                if(targetSquare == (other == Value.WHITE ? 0 : 56)) {
+                    castling &= (other == Value.WHITE ? ~2 : ~8);;
+                }
+            }
+        }
+        return new Board(bitboards, 1 ^ board.player, castling, eSquare, board.halfMoveCount + 1, board.fullMoveCount + board.player, key);
     }
 
     public static void draw(Board board) {
