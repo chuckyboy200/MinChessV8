@@ -17,7 +17,6 @@ public class Gen {
 	 * @return A 3xN array containing the requested moves ([0][] = start squares, [1][] = target squares, [2][] = promotion piece)
 	 */
 	public static int[] moves(Board board, boolean legal) {
-		//System.out.println("Gen.moves: Generating...");
 		int player = board.player();
 		int playerBit = player << 3;
 		long king = board.bitboard(playerBit | 1);
@@ -33,19 +32,52 @@ public class Gen {
 		int moveListLength = 0;
 		moveListLength = getKingMoves(board, moves, king, player, moveListLength, allOccupancy, playerOccupancy);
 		if(queens != 0L) {
-			moveListLength = getQueenMoves(board, moves, queens, player, moveListLength, allOccupancy, playerOccupancy);
+			moveListLength = getQueenMoves(board, moves, queens, moveListLength, allOccupancy, playerOccupancy);
 		}
 		if(rooks != 0L) {
-			moveListLength = getRookMoves(board, moves, rooks, player, moveListLength, allOccupancy, playerOccupancy);
+			moveListLength = getRookMoves(board, moves, rooks, moveListLength, allOccupancy, playerOccupancy);
 		}
 		if(bishops != 0L) {
-			moveListLength = getBishopMoves(board, moves, bishops, player, moveListLength, allOccupancy, playerOccupancy);
+			moveListLength = getBishopMoves(board, moves, bishops, moveListLength, allOccupancy, playerOccupancy);
 		}
 		if(knights != 0L) {
-			moveListLength = getKnightMoves(board, moves, knights, player, moveListLength, playerOccupancy);
+			moveListLength = getKnightMoves(board, moves, knights, moveListLength, playerOccupancy);
 		}
 		if(pawns != 0L) {
 			moveListLength = getPawnMoves(board, moves, pawns, player, moveListLength, allOccupancy, otherOccupancy);
+		}
+		return legal ? purgeIllegalMoves(board, moves, moveListLength) : Arrays.copyOf(moves, moveListLength);
+	}
+
+	public static int[] tacticalMoves(Board board, boolean legal) {
+		int player = board.player();
+		int playerBit = player << 3;
+		long king = board.bitboard(playerBit | 1);
+		long queens = board.bitboard(playerBit | 2);
+		long rooks = board.bitboard(playerBit | 3);
+		long bishops = board.bitboard(playerBit | 4);
+		long knights = board.bitboard(playerBit | 5);
+		long pawns = board.bitboard(playerBit | 6);
+		long playerOccupancy = board.bitboard(playerBit);
+		long otherOccupancy = board.bitboard(8 ^ playerBit);
+		long allOccupancy = playerOccupancy | otherOccupancy;
+		int[] moves = new int[127];
+		int moveListLength = 0;
+		moveListLength = getTacticalKingMoves(board, moves, king, moveListLength, allOccupancy, otherOccupancy);
+		if(queens != 0L) {
+			moveListLength = getTacticalQueenMoves(board, moves, queens, moveListLength, allOccupancy, otherOccupancy);
+		}
+		if(rooks != 0L) {
+			moveListLength = getTacticalRookMoves(board, moves, rooks, moveListLength, allOccupancy, otherOccupancy);
+		}
+		if(bishops != 0L) {
+			moveListLength = getTacticalBishopMoves(board, moves, bishops, moveListLength, allOccupancy, otherOccupancy);
+		}
+		if(knights != 0L) {
+			moveListLength = getTacticalKnightMoves(board, moves, knights, moveListLength, otherOccupancy);
+		}
+		if(pawns != 0L) {
+			moveListLength = getTacticalPawnMoves(board, moves, pawns, player, moveListLength, allOccupancy, otherOccupancy);
 		}
 		return legal ? purgeIllegalMoves(board, moves, moveListLength) : Arrays.copyOf(moves, moveListLength);
 	}
@@ -79,7 +111,18 @@ public class Gen {
 		return moveListLength;
 	}
 
-	private static int getQueenMoves(Board board, int[] moves, long queens, int player, int moveListLength, long allOccupancy, long playerOccupancy) {
+	private static int getTacticalKingMoves(Board board, int[] moves, long king, int moveListLength, long allOccupancy, long otherOccupancy) {
+		int square = Long.numberOfTrailingZeros(king);
+		long result = B.KING_ATTACK[square] & otherOccupancy;
+		while(result != 0L) {
+			addMove(moves, square, Long.numberOfTrailingZeros(result), moveListLength);
+			moveListLength ++;
+			result &= result - 1;
+		}
+		return moveListLength;
+	}
+
+	private static int getQueenMoves(Board board, int[] moves, long queens, int moveListLength, long allOccupancy, long playerOccupancy) {
 		while(queens != 0L) {
 			int square = Long.numberOfTrailingZeros(queens);
 			queens &= queens - 1;
@@ -93,7 +136,21 @@ public class Gen {
 		return moveListLength;
 	}
 
-	private static int getRookMoves(Board board, int[] moves, long rooks, int player, int moveListLength, long allOccupancy, long playerOccupancy) {
+	private static int getTacticalQueenMoves(Board board, int[] moves, long queens, int moveListLength, long allOccupancy, long otherOccupancy) {
+		while(queens != 0L) {
+			int square = Long.numberOfTrailingZeros(queens);
+			queens &= queens - 1;
+			long result = Magic.queenMoves(square, allOccupancy) & otherOccupancy;
+			while(result != 0L) {
+				addMove(moves, square, Long.numberOfTrailingZeros(result), moveListLength);
+				moveListLength ++;
+				result &= result - 1;
+			}
+		}
+		return moveListLength;
+	}
+
+	private static int getRookMoves(Board board, int[] moves, long rooks, int moveListLength, long allOccupancy, long playerOccupancy) {
 		while(rooks != 0L) {
 			int square = Long.numberOfTrailingZeros(rooks);
 			rooks &= rooks - 1;
@@ -107,7 +164,21 @@ public class Gen {
 		return moveListLength;
 	}
 
-	private static int getBishopMoves(Board board, int[] moves, long bishops, int player, int moveListLength, long allOccupancy, long playerOccupancy) {
+	private static int getTacticalRookMoves(Board board, int[] moves, long rooks, int moveListLength, long allOccupancy, long otherOccupancy) {
+		while(rooks != 0L) {
+			int square = Long.numberOfTrailingZeros(rooks);
+			rooks &= rooks - 1;
+			long result = Magic.rookMoves(square, allOccupancy) & otherOccupancy;
+			while(result != 0L) {
+				addMove(moves, square, Long.numberOfTrailingZeros(result), moveListLength);
+				moveListLength ++;
+				result &= result - 1;
+			}
+		}
+		return moveListLength;
+	}
+
+	private static int getBishopMoves(Board board, int[] moves, long bishops, int moveListLength, long allOccupancy, long playerOccupancy) {
 		while(bishops != 0L) {
 			int square = Long.numberOfTrailingZeros(bishops);
 			bishops &= bishops - 1;
@@ -121,11 +192,39 @@ public class Gen {
 		return moveListLength;
 	}
 
-	private static int getKnightMoves(Board board, int[] moves, long knights, int player, int moveListLength, long playerOccupancy) {
+	private static int getTacticalBishopMoves(Board board, int[] moves, long bishops, int moveListLength, long allOccupancy, long otherOccupancy) {
+		while(bishops != 0L) {
+			int square = Long.numberOfTrailingZeros(bishops);
+			bishops &= bishops - 1;
+			long result = Magic.bishopMoves(square, allOccupancy) & otherOccupancy;
+			while(result != 0L) {
+				addMove(moves, square, Long.numberOfTrailingZeros(result), moveListLength);
+				moveListLength ++;
+				result &= result - 1;
+			}
+		}
+		return moveListLength;
+	}
+
+	private static int getKnightMoves(Board board, int[] moves, long knights, int moveListLength, long playerOccupancy) {
 		while(knights != 0L) {
 			int square = Long.numberOfTrailingZeros(knights);
 			knights &= knights - 1;
 			long result = B.LEAP_ATTACK[square] & ~playerOccupancy;
+			while(result != 0L) {
+				addMove(moves, square, Long.numberOfTrailingZeros(result), moveListLength);
+				moveListLength ++;
+				result &= result - 1;
+			}
+		}
+		return moveListLength;
+	}
+
+	private static int getTacticalKnightMoves(Board board, int[] moves, long knights, int moveListLength, long otherOccupancy) {
+		while(knights != 0L) {
+			int square = Long.numberOfTrailingZeros(knights);
+			knights &= knights - 1;
+			long result = B.LEAP_ATTACK[square] & otherOccupancy;
 			while(result != 0L) {
 				addMove(moves, square, Long.numberOfTrailingZeros(result), moveListLength);
 				moveListLength ++;
@@ -155,6 +254,40 @@ public class Gen {
 							moveListLength ++;
 						}
 					}
+				}
+			}
+			long result = B.PAWN_ATTACK[player][square] & (otherOccupancy | (board.eSquare() != -1 ? (1L << eSquare) : 0));
+			while(result != 0L) {
+				int targetSquare = Long.numberOfTrailingZeros(result);
+				result &= result - 1;
+				if(targetSquare == eSquare) {
+					addMove(moves, square, targetSquare, moveListLength);
+					moveListLength ++;
+				} else {
+					if(pawnRank == 6 - player * 5) {
+						addPromoteMoves(moves, square, targetSquare, playerBit, moveListLength);
+						moveListLength += 4;
+					} else {
+						addMove(moves, square, targetSquare, moveListLength);
+						moveListLength ++;
+					}
+				}
+			}
+		}
+		return moveListLength;
+	}
+
+	private static int getTacticalPawnMoves(Board board, int[] moves, long pawns, int player, int moveListLength, long allOccupancy, long otherOccupancy) {
+		int playerBit = player << 3;
+		int eSquare = board.eSquare();
+		while(pawns != 0L) {
+			int square = Long.numberOfTrailingZeros(pawns);
+			pawns &= pawns - 1;
+			int pawnRank = square >>> 3;
+			if((allOccupancy & B.PAWN_SINGLE_PUSH[player][square]) == 0L) {
+				if(pawnRank == 6 - player * 5) {
+					addPromoteMoves(moves, square, square + 8 - (player << 4), playerBit, moveListLength);
+					moveListLength += 4;
 				}
 			}
 			long result = B.PAWN_ATTACK[player][square] & (otherOccupancy | (board.eSquare() != -1 ? (1L << eSquare) : 0));
