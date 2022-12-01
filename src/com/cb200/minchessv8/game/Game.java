@@ -61,4 +61,33 @@ public class Game {
         this.board = Board.gen(this.board, legal);
     }
 
+    public int moveListSize() {
+        return this.board.moveSize();
+    }
+
+    public int move(int index) {
+        return this.board.move(index);
+    }
+
+    public String moveNotation(int index) {
+        return this.board.moveNotation(index);
+    }
+
+    public void makeMove(int index) {
+        this.board = Board.makeMove(this.board, this.board.move(index));
+    }
+
+    public int player() {
+        return this.board.player();
+    }
+
+    public int fullMoveCount() {
+        return this.board.fullMoveCount();
+    }
+
+    @Override
+    public String toString() {
+        return this.board.toString();
+    }
+
 }
