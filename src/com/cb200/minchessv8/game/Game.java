@@ -1,6 +1,7 @@
 package com.cb200.minchessv8.game;
 
 import com.cb200.minchessv8.board.Board;
+import com.cb200.minchessv8.search.Search;
 
 public class Game {
     
@@ -83,6 +84,12 @@ public class Game {
 
     public int fullMoveCount() {
         return this.board.fullMoveCount();
+    }
+
+    public int doBestMove(int depth) {
+        int bestMove = Search.bestMove(this.board, depth);
+        this.board = Board.makeMove(this.board, bestMove);
+        return bestMove;
     }
 
     @Override
