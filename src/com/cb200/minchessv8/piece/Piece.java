@@ -22,6 +22,8 @@ public class Piece {
 	public final static int BLACK_KNIGHT = 13;
 	public final static int BLACK_PAWN = 14;
 
+	public final static int[] VALUE = { 0, 0, 2538, 1276, 825, 781, 126};
+
     public enum Type {
 		EMPTY, KING, QUEEN, ROOK, BISHOP, KNIGHT, PAWN, PASSED_PAWN;
 	};
