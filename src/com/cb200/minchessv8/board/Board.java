@@ -68,6 +68,11 @@ public class Board {
         this.move = Arrays.copyOf(moves, moves.length);
         this.hasGenerated = true;
     }
+
+    public static Board initial() {
+        return fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    }
+
     /**
      * Create a new immutable Board object from a valid fen string
      * 
